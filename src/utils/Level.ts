@@ -1,3 +1,7 @@
+import { convertDegreeToBoxShadowOffset } from './helpers';
+import { Timer } from './Timer';
+import { Score } from './Score';
+
 export class Level {
   targetValue: number;
   userSelection: number;
@@ -8,6 +12,8 @@ export class Level {
   userSelectEl: HTMLInputElement;
   levelNumber: number;
   messageEl: HTMLDivElement;
+  timer: Timer;
+  score: Score;
 
   constructor(
     levelNumber: number,
@@ -18,7 +24,9 @@ export class Level {
     targetElProperty: string,
     targetEl: HTMLElement,
     userSelectEl: HTMLInputElement,
-    messageEl: HTMLDivElement
+    messageEl: HTMLDivElement,
+    timer: Timer,
+    score: Score
   ) {
     this.levelNumber = levelNumber;
     this.targetValue = targetValue;
@@ -29,6 +37,8 @@ export class Level {
     this.targetEl = targetEl;
     this.userSelectEl = userSelectEl;
     this.messageEl = messageEl;
+    this.timer = timer;
+    this.score = score;
   }
 
   play(): void {
@@ -46,6 +56,8 @@ export class Level {
       this.updateGameUI();
       console.log(`user selected: ${this.userSelection}`);
     });
+
+    this.timer.start();
   }
 
   updateGameUI(): void {
@@ -61,12 +73,16 @@ export class Level {
   }
 
   checkAnswer(): boolean {
+    this.timer.stop();
+    let points = this.score.updateScore(this.targetValue, this.userSelection);
+
     //console.log(`user selected: ${this.userSelection} and target is: ${this.targetValue}`);
-    this.messageEl.textContent = `user selected: ${this.userSelection} and target is: ${this.targetValue}`;
+    this.messageEl.textContent = `user selected: ${this.userSelection} and target is: ${this.targetValue}! +${points} points`;
     return this.targetValue === this.userSelection;
   }
 
   formatPropertyValueToStringForLevel(level: number, value: number): string {
+    console.log({ value });
     if (level === 1) {
       return `${value}px`;
     } else if (level === 2) {
@@ -85,7 +101,26 @@ export class Level {
       // Update the value at the position of the vertical offset in the shadow (4th value, index 3)
       splitString[4] = `${value}px`;
       let newBoxShadowString = splitString.join(' ');
-      console.log({ newBoxShadowString });
+      return newBoxShadowString;
+    } else if (level === 7) {
+      // get reference box shadow value
+      let boxShadowString = getComputedStyle(this.referenceEl).boxShadow;
+      // 'rgba(0, 0px 0px 0.5) -14px 14px 10px 0px inset'
+      let splitString = boxShadowString.split(' ');
+
+      // split into components
+      let horizontalOffset = parseInt(splitString[4], 10);
+      let verticalOffset = parseInt(splitString[5], 10);
+      let distance = Math.sqrt(
+        horizontalOffset * horizontalOffset + verticalOffset * verticalOffset
+      );
+
+      let { offsetX, offsetY } = convertDegreeToBoxShadowOffset(value, distance);
+
+      // Update the value at the position of the vertical offset in the shadow (4th value, index 3)
+      splitString[4] = `${offsetX}px`;
+      splitString[5] = `${offsetY}px`;
+      let newBoxShadowString = splitString.join(' ');
       return newBoxShadowString;
     }
     return '';

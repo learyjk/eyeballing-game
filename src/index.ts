@@ -1,5 +1,7 @@
 import { selectInputElement } from '@finsweet/ts-utils';
 import { Level } from './utils/Level';
+import { Timer } from './utils/Timer';
+import { Score } from './utils/Score';
 
 enum SELECTORS {
   REFERENCE_ELEMENTS = '[data-game="reference-el"]', // element displaying target value
@@ -10,6 +12,9 @@ enum SELECTORS {
   SUBMIT_BUTTONS = '[data-game="submit-button"]', // button to submit answer
   NEXT_ROUND_BUTTONS = '[data-game="next-button"]', // button to go to next round
   TAB_LINKS = '.w-tab-link', // tab links to control navigation
+  TIMER_ELEMENT = '[data-game="time-remaining"]',
+  SCORE_ELEMENT = '[data-game="score"]',
+  ROUND_ELEMENT = '[data-game="round-number"]',
 }
 
 // GET ELEMENTS
@@ -21,6 +26,9 @@ const submitButtons = document.querySelectorAll<HTMLAnchorElement>(SELECTORS.SUB
 const nextRoundButtons = document.querySelectorAll<HTMLAnchorElement>(SELECTORS.NEXT_ROUND_BUTTONS);
 const messageEl = document.querySelector<HTMLDivElement>(SELECTORS.MESSAGE_ELEMENT);
 const tabLinks = document.querySelectorAll<HTMLAnchorElement>(SELECTORS.TAB_LINKS);
+const timerEl = document.querySelector<HTMLDivElement>(SELECTORS.TIMER_ELEMENT);
+const scoreEl = document.querySelector<HTMLDivElement>(SELECTORS.SCORE_ELEMENT);
+const roundEl = document.querySelector<HTMLDivElement>(SELECTORS.ROUND_ELEMENT);
 
 // LOG THEM JUST FOR DEBUGGING
 console.log({
@@ -32,6 +40,9 @@ console.log({
   nextRoundButtons,
   displaySelectEls,
   tabLinks,
+  timerEl,
+  scoreEl,
+  roundEl,
 });
 
 // STATE VARIABLES
@@ -47,19 +58,27 @@ let LEVEL_PROPERTIES_NAMES: Record<number, string> = {
   4: 'border-radius',
   5: 'opacity',
   6: 'box-shadow',
+  7: 'box-shadow',
 };
 
-for (let i = 0; i < 6; i++) {
+let numLevels = Object.keys(LEVEL_PROPERTIES_NAMES).length;
+let score = new Score(scoreEl!);
+roundEl!.textContent = currentLevel.toString().padStart(2, '0');
+hideNextShowSubmit();
+
+for (let i = 0; i < numLevels; i++) {
   let level = new Level(
     i + 1, // level number
-    getRandomInt(parseInt(userSelectEls[i].min, 10), parseInt(userSelectEls[i].max)), // target value 1-10
+    getRandomInt(parseInt(userSelectEls[i].min, 10), parseInt(userSelectEls[i].max, 10)), // target value
     parseInt(userSelectEls[i].value, 10), // user selection
     displaySelectEls[i], // element displaying user selection
     referenceEls[i], // reference element
     LEVEL_PROPERTIES_NAMES[i + 1], // target element property
     targetEls[i],
     userSelectEls[i],
-    messageEl!
+    messageEl!,
+    new Timer(90, timerEl!),
+    score!
   );
   levels.push(level);
 }
@@ -148,6 +167,7 @@ function handleSubmitButtonClicked() {
 
 function handleNextRoundButtonClicked() {
   currentLevel++;
+  roundEl!.textContent = currentLevel.toString().padStart(2, '0');
   simulateClick(tabLinks[currentLevel - 1]);
   levels[currentLevel - 1].play();
   hideNextShowSubmit();
