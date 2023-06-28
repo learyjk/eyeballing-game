@@ -153,13 +153,19 @@ function gameOver() {
     throw new Error('Game and end elements are required');
   }
   const timeRemaining = timer.getTime();
+  const finalScore = score.getScore();
   if (timeRemaining > 0) {
     // finished before time ran out
     // score.addScore(timeRemaining); // interesting
-    endTextEl.textContent = `Congratulations! You score ${score.getScore()} points, with ${timeRemaining} seconds remaining.`;
+
+    endTextEl.textContent = `Congratulations! You scored ${finalScore} ${
+      finalScore === 1 ? 'point' : 'points'
+    }, with ${timeRemaining} ${timeRemaining === 1 ? 'second' : 'seconds'} remaining.`;
   } else {
     // time ran out
-    endTextEl.textContent = `Oh No! You ran out of time. You scored ${score.getScore()} points.`;
+    endTextEl.textContent = `Oh No! You ran out of time. You scored ${finalScore} ${
+      finalScore === 1 ? 'point' : 'points'
+    }.`;
   }
   gameEl.style.setProperty('display', 'none');
   endEl.style.setProperty('display', 'block');
