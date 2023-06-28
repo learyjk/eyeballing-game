@@ -6,11 +6,11 @@ export function convertDegreeToBoxShadowOffset(angleInDegree: number, distance: 
     angleInDegree += 360;
   }
   // Convert angle from degrees to radians
-  let angleInRadians = angleInDegree * (Math.PI / 180);
+  const angleInRadians = angleInDegree * (Math.PI / 180);
 
   // Calculate x and y offsets
-  let offsetX = Math.floor(distance * Math.cos(angleInRadians));
-  let offsetY = Math.floor(distance * Math.sin(angleInRadians)); // Negate y offset to match CSS conventions
+  const offsetX = Math.floor(distance * Math.cos(angleInRadians));
+  const offsetY = Math.floor(distance * Math.sin(angleInRadians)); // Negate y offset to match CSS conventions
 
   return { offsetX, offsetY };
 }

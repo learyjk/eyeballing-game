@@ -1,24 +1,40 @@
+import { GOOD_PERCENT, PERFECT_PERCENT, POINTS_FOR_GOOD, POINTS_FOR_PERFECT } from './constants';
+
 export class Score {
-  private currentScore: number = 0;
+  private currentScore = 0;
 
   constructor(private scoreElement: HTMLElement) {
     this.scoreElement.textContent = this.currentScore.toString(); // initialize the score display
   }
 
-  updateScore(targetValue: number, userSelection: number) {
-    let points = this.calculateScore(targetValue, userSelection);
+  updateScore(targetValue: number, userSelection: number, isCircular = false) {
+    const points = this.calculateScore(targetValue, userSelection, isCircular);
     this.currentScore += points; // update score
     this.scoreElement.textContent = this.currentScore.toString(); // update score display
     return points;
   }
 
-  calculateScore(targetValue: number, userSelection: number) {
-    const percentageDifference = Math.abs((targetValue - userSelection) / targetValue) * 100;
+  calculateScore(targetValue: number, userSelection: number, isCircular = false) {
+    let difference;
+    let percentageDifference;
 
-    if (percentageDifference <= 10) {
-      return 2;
-    } else if (percentageDifference <= 20) {
-      return 1;
+    if (isCircular) {
+      difference = Math.abs(targetValue - userSelection);
+      // Adjust difference for angle wrap-around
+      difference = Math.min(difference, 360 - difference);
+
+      // calculate percentage
+      percentageDifference = (difference / 360) * 100;
+    } else {
+      difference = Math.abs(targetValue - userSelection);
+      percentageDifference = (difference / targetValue) * 100;
+    }
+
+    if (percentageDifference <= PERFECT_PERCENT) {
+      return POINTS_FOR_PERFECT;
+    }
+    if (percentageDifference <= GOOD_PERCENT) {
+      return POINTS_FOR_GOOD;
     }
     return 0;
   }

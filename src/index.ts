@@ -1,7 +1,8 @@
-import { selectInputElement } from '@finsweet/ts-utils';
+import { LEVEL_PROPERTIES_NAMES, TIME } from '$utils/constants';
+
 import { Level } from './utils/Level';
-import { Timer } from './utils/Timer';
 import { Score } from './utils/Score';
+import { Timer } from './utils/Timer';
 
 enum SELECTORS {
   REFERENCE_ELEMENTS = '[data-game="reference-el"]', // element displaying target value
@@ -15,6 +16,13 @@ enum SELECTORS {
   TIMER_ELEMENT = '[data-game="time-remaining"]',
   SCORE_ELEMENT = '[data-game="score"]',
   ROUND_ELEMENT = '[data-game="round-number"]',
+  START_GAME_BUTTON = '[data-game="start-game"]',
+  COUNTDOWN_ELEMENT = '[data-game="countdown"]',
+  INTRO_ELEMENT = '[data-game="intro"]',
+  GAME_ELEMENT = '[data-game="game"]',
+  END_ELEMENT = '[data-game="end"]',
+  END_TEXT_ELEMENT = '[data-game="end-text"]',
+  TRY_AGAIN_BUTTON = '[data-game="try-again"]',
 }
 
 // GET ELEMENTS
@@ -29,21 +37,29 @@ const tabLinks = document.querySelectorAll<HTMLAnchorElement>(SELECTORS.TAB_LINK
 const timerEl = document.querySelector<HTMLDivElement>(SELECTORS.TIMER_ELEMENT);
 const scoreEl = document.querySelector<HTMLDivElement>(SELECTORS.SCORE_ELEMENT);
 const roundEl = document.querySelector<HTMLDivElement>(SELECTORS.ROUND_ELEMENT);
+const startGameButton = document.querySelector<HTMLAnchorElement>(SELECTORS.START_GAME_BUTTON);
+const countdownEl = document.querySelector<HTMLDivElement>(SELECTORS.COUNTDOWN_ELEMENT);
+const introEl = document.querySelector<HTMLDivElement>(SELECTORS.INTRO_ELEMENT);
+const gameEl = document.querySelector<HTMLDivElement>(SELECTORS.GAME_ELEMENT);
+const endEl = document.querySelector<HTMLDivElement>(SELECTORS.END_ELEMENT);
+const endTextEl = document.querySelector<HTMLDivElement>(SELECTORS.END_TEXT_ELEMENT);
+const tryAgainButton = document.querySelector<HTMLAnchorElement>(SELECTORS.TRY_AGAIN_BUTTON);
 
 // LOG THEM JUST FOR DEBUGGING
-console.log({
-  referenceEls,
-  targetEls,
-  userSelectEls,
-  submitButtons,
-  messageEl,
-  nextRoundButtons,
-  displaySelectEls,
-  tabLinks,
-  timerEl,
-  scoreEl,
-  roundEl,
-});
+// console.log({
+//   referenceEls,
+//   targetEls,
+//   userSelectEls,
+//   submitButtons,
+//   messageEl,
+//   nextRoundButtons,
+//   displaySelectEls,
+//   tabLinks,
+//   timerEl,
+//   scoreEl,
+//   roundEl,
+//   startGameButton,
+// });
 
 // STATE VARIABLES
 let currentLevel = 1;
@@ -51,112 +67,121 @@ let currentLevel = 1;
 // CREATE LEVELS
 const levels: Level[] = [];
 
-let LEVEL_PROPERTIES_NAMES: Record<number, string> = {
-  1: '-webkit-text-stroke-width',
-  2: 'font-variation-settings',
-  3: 'font-variation-settings',
-  4: 'border-radius',
-  5: 'opacity',
-  6: 'box-shadow',
-  7: 'box-shadow',
-};
-
-let numLevels = Object.keys(LEVEL_PROPERTIES_NAMES).length;
-let score = new Score(scoreEl!);
-roundEl!.textContent = currentLevel.toString().padStart(2, '0');
+const numLevels = Object.keys(LEVEL_PROPERTIES_NAMES).length;
+if (
+  !scoreEl ||
+  !roundEl ||
+  !messageEl ||
+  !timerEl ||
+  !countdownEl ||
+  !introEl ||
+  !gameEl ||
+  !endEl ||
+  !endTextEl ||
+  !tryAgainButton ||
+  !startGameButton
+) {
+  throw new Error('Error retrieving necessary game elements.');
+}
+const score = new Score(scoreEl);
+const timer = new Timer(TIME, timerEl);
+timer.on('timeUp', gameOver);
+roundEl.textContent = currentLevel.toString().padStart(2, '0');
 hideNextShowSubmit();
 
-for (let i = 0; i < numLevels; i++) {
-  let level = new Level(
-    i + 1, // level number
-    getRandomInt(parseInt(userSelectEls[i].min, 10), parseInt(userSelectEls[i].max, 10)), // target value
-    parseInt(userSelectEls[i].value, 10), // user selection
-    displaySelectEls[i], // element displaying user selection
-    referenceEls[i], // reference element
-    LEVEL_PROPERTIES_NAMES[i + 1], // target element property
-    targetEls[i],
-    userSelectEls[i],
-    messageEl!,
-    new Timer(90, timerEl!),
-    score!
+for (let i = 1; i <= numLevels; i++) {
+  if (!messageEl || !timerEl) {
+    throw new Error('Message and timer elements are required');
+  }
+
+  const level = new Level(
+    i, // level number
+    getRandomInt(parseInt(userSelectEls[i - 1].min, 10), parseInt(userSelectEls[i - 1].max, 10)), // target value
+    parseInt(userSelectEls[i - 1].value, 10), // user selection
+    displaySelectEls[i - 1], // element displaying user selection
+    referenceEls[i - 1], // reference element
+    LEVEL_PROPERTIES_NAMES[i], // target element property
+    targetEls[i - 1],
+    userSelectEls[i - 1],
+    messageEl,
+    timer,
+    score,
+    i === 7 ? true : false // level 7 score is based ond degrees
   );
   levels.push(level);
 }
 
-/*
-// variable font weight game
-let levelOne = new Level(
-  1, // level number
-  getRandomInt(parseInt(userSelectEls[0].min, 10), parseInt(userSelectEls[0].max)), // target value 1-10
-  parseInt(userSelectEls[0].value, 10), // user selection
-  displaySelectEls[0], // element displaying user selection
-  referenceEls[0], // reference element
-  LEVEL_PROPERTIES_NAMES[i], // target element property
-  targetEls[0],
-  userSelectEls[0],
-  messageEl!
-);
+function handleStartGameButtonClicked() {
+  if (!introEl || !gameEl || !countdownEl) {
+    throw new Error('Intro and game elements are required');
+  }
+  if (!countdownEl) {
+    throw new Error('Countdown element is required');
+  }
+  introEl.style.setProperty('display', 'none');
+  gameEl.style.setProperty('display', 'block');
 
-// variable font width game
-let levelTwo = new Level(
-  2, // level number
-  getRandomInt(parseInt(userSelectEls[1].min, 10), parseInt(userSelectEls[1].max)),
-  parseInt(userSelectEls[1].value, 10), // user selection
-  displaySelectEls[1], // element displaying user selection
-  referenceEls[1], // reference element
-  'font-variation-settings', // target element property
-  targetEls[1],
-  userSelectEls[1],
-  messageEl!
-);
+  const countdown = setInterval(() => {
+    const currentCountdown = parseInt(countdownEl.textContent || '3', 10);
+    if (currentCountdown === 1) {
+      clearInterval(countdown);
+      simulateClick(tabLinks[currentLevel]);
+      // start playing first level
+      timer.start();
+      levels[currentLevel - 1].play();
+    } else {
+      countdownEl.textContent = (currentCountdown - 1).toString();
+    }
+  }, 1000);
+}
 
-// variable font weight game
-let levelThree = new Level(
-  3, // level number
-  getRandomInt(parseInt(userSelectEls[2].min, 10), parseInt(userSelectEls[2].max)),
-  parseInt(userSelectEls[2].value, 20), // user selection
-  displaySelectEls[2], // element displaying user selection
-  referenceEls[2], // reference element
-  'font-variation-settings', // target element property
-  targetEls[2],
-  userSelectEls[2],
-  messageEl!
-);
+function resetGame() {
+  if (!roundEl || !countdownEl || !score || !timer) {
+    throw new Error('Error resetting the game');
+  }
+  countdownEl.textContent = '3';
+  score.reset();
+  timer.reset();
+  currentLevel = 1;
+  simulateClick(tabLinks[0]);
+  roundEl.textContent = currentLevel.toString().padStart(2, '0');
+}
 
-
-// button border radius
-const levelNumber = 4;
-let levelFour = new Level(
-  levelNumber, // level number
-  getRandomInt(
-    parseInt(userSelectEls[levelNumber - 1].min, 10),
-    parseInt(userSelectEls[levelNumber - 1].max)
-  ),
-  parseInt(userSelectEls[levelNumber - 1].value, 10), // user selection
-  displaySelectEls[levelNumber - 1], // element displaying user selection
-  referenceEls[levelNumber - 1], // reference element
-  'border-radius', // target element property
-  targetEls[levelNumber - 1],
-  userSelectEls[levelNumber - 1],
-  messageEl!
-);
-
-// add levels to levels array
-levels.push(levelOne);
-levels.push(levelTwo);
-levels.push(levelThree);
-*/
-
-// start playing first level
-levels[currentLevel - 1].play();
+function gameOver() {
+  timer.stop();
+  if (!gameEl || !endEl || !endTextEl) {
+    throw new Error('Game and end elements are required');
+  }
+  const timeRemaining = timer.getTime();
+  if (timeRemaining > 0) {
+    // finished before time ran out
+    // score.addScore(timeRemaining); // interesting
+    endTextEl.textContent = `Congratulations! You score ${score.getScore()} points, with ${timeRemaining} seconds remaining.`;
+  } else {
+    // time ran out
+    endTextEl.textContent = `Oh No! You ran out of time. You scored ${score.getScore()} points.`;
+  }
+  gameEl.style.setProperty('display', 'none');
+  endEl.style.setProperty('display', 'block');
+}
 
 // EVENT LISTENERS
+startGameButton.addEventListener('click', () => {
+  handleStartGameButtonClicked();
+});
+
 submitButtons.forEach((button) => {
   button.addEventListener('click', handleSubmitButtonClicked);
 });
 
 nextRoundButtons.forEach((button) => {
   button.addEventListener('click', handleNextRoundButtonClicked);
+});
+
+tryAgainButton.addEventListener('click', () => {
+  resetGame();
+  endEl.style.setProperty('display', 'none');
+  introEl.style.setProperty('display', 'block');
 });
 
 // HANDLERS
@@ -166,11 +191,19 @@ function handleSubmitButtonClicked() {
 }
 
 function handleNextRoundButtonClicked() {
-  currentLevel++;
-  roundEl!.textContent = currentLevel.toString().padStart(2, '0');
-  simulateClick(tabLinks[currentLevel - 1]);
-  levels[currentLevel - 1].play();
-  hideNextShowSubmit();
+  if (!roundEl) {
+    throw new Error('Round element is required');
+  }
+  currentLevel += 1;
+  if (currentLevel <= levels.length) {
+    roundEl.textContent = currentLevel.toString().padStart(2, '0');
+    simulateClick(tabLinks[currentLevel]);
+    levels[currentLevel - 1].play();
+    hideNextShowSubmit();
+  } else {
+    // last level completed
+    gameOver();
+  }
 }
 
 // HELPERS
@@ -199,7 +232,7 @@ function getRandomInt(min: number, max: number) {
 // need to simulate click to trigger tab change
 // using click() causes scroll issues in Safari
 function simulateClick(element: HTMLAnchorElement) {
-  let clickEvent = new MouseEvent('click', {
+  const clickEvent = new MouseEvent('click', {
     view: window,
     bubbles: true,
     cancelable: false,

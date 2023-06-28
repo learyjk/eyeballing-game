@@ -1,19 +1,35 @@
 export class Timer {
-  private countdown: any; // holds the setInterval
+  private countdown = 0; // holds the setInterval
   private timeRemaining: number; // holds the current remaining time
+  private eventCallbacks: { [key: string]: Array<() => void> } = {}; // <-- Define an event callbacks object
 
   constructor(private timeLimit: number, private timeElement: HTMLElement) {
     this.timeRemaining = this.timeLimit;
-    console.log({ timeElement });
     this.timeElement.textContent = this.formatTime(this.timeRemaining); // update timer display
+  }
+
+  on(eventName: string, callback: () => void) {
+    // <-- Provide method to register callbacks
+    if (!this.eventCallbacks[eventName]) {
+      this.eventCallbacks[eventName] = [];
+    }
+    this.eventCallbacks[eventName].push(callback);
+  }
+
+  private emit(eventName: string) {
+    // <-- Call all registered callbacks when the event happens
+    if (this.eventCallbacks[eventName]) {
+      this.eventCallbacks[eventName].forEach((callback) => callback());
+    }
   }
 
   start() {
     this.countdown = setInterval(() => {
-      console.log(`timeRemaining: ${this.timeRemaining}`);
-      this.timeRemaining--;
+      // console.log(`timeRemaining: ${this.timeRemaining}`);
+      this.timeRemaining -= 1;
       if (this.timeRemaining < 0) {
         this.stop();
+        this.emit('timeUp');
       } else {
         this.timeElement.textContent = this.formatTime(this.timeRemaining); // update timer display
       }
