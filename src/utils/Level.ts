@@ -44,10 +44,6 @@ export class Level {
   }
 
   play(): void {
-    // console.log(`level ${this.levelNumber} started`);
-
-    // update the reference element
-    // console.log(`update reference ${this.targetElProperty} to ${this.targetValue}`);
     this.referenceEl.style.setProperty(
       this.targetElProperty,
       this.formatPropertyValueToStringForLevel(this.levelNumber, this.targetValue)
@@ -56,7 +52,6 @@ export class Level {
     this.userSelectEl.addEventListener('input', (e) => {
       this.userSelection = parseInt((e.target as HTMLInputElement).value);
       this.updateGameUI();
-      //console.log(`user selected: ${this.userSelection}`);
     });
   }
 
@@ -73,12 +68,6 @@ export class Level {
   }
 
   checkAnswer(): boolean {
-    // const points = this.score.updateScore(
-    //   this.targetValue,
-    //   this.userSelection,
-    //   this.levelNumber === 7
-    // );
-
     let difference;
     let percentageDifference;
 
@@ -94,7 +83,8 @@ export class Level {
       percentageDifference = (difference / this.targetValue) * 100;
     }
 
-    console.log({ percentageDifference });
+    console.log(`target: ${this.targetValue} user: ${this.userSelection}`);
+    console.log(`difference: ${difference} percentage: ${percentageDifference}`);
 
     if (percentageDifference <= PERFECT_PERCENT) {
       return true;

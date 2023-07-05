@@ -119,7 +119,7 @@ for (let i = 1; i <= numLevels; i++) {
     userSelectEls[i - 1],
     messageEl,
     score,
-    i === 7 ? true : false // level 7 score is based ond degrees
+    i === 7 ? true : false // level 7 score is based on degrees
   );
   levels.push(level);
 }
