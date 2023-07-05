@@ -4,7 +4,8 @@
   new EventSource(`${"http://localhost:3000"}/esbuild`).addEventListener("change", () => location.reload());
 
   // src/utils/constants.ts
-  var TIME = 30;
+  var PENALTY_DURATION = 5e3;
+  var SHAKE_DURATION = 500;
   var LEVEL_PROPERTIES_NAMES = {
     1: "-webkit-text-stroke-width",
     2: "font-variation-settings",
@@ -18,6 +19,12 @@
   var GOOD_PERCENT = 20;
   var POINTS_FOR_PERFECT = 2;
   var POINTS_FOR_GOOD = 1;
+  var CLASSNAMES = {
+    SUCCESS: "is-success",
+    ERROR: "is-error",
+    ACTIVE: "is-active",
+    SHAKE: "shake-element"
+  };
 
   // src/utils/helpers.ts
   function convertDegreeToBoxShadowOffset(angleInDegree, distance) {
@@ -35,6 +42,60 @@
     const seconds = time % 60;
     return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
   }
+  function formatHumanReadableTime(time) {
+    const minutes = Math.floor(time / 60);
+    const seconds = time % 60;
+    const minuteStr = minutes === 1 ? "minute" : "minutes";
+    const secondStr = seconds === 1 ? "second" : "seconds";
+    if (minutes === 0) {
+      return `${seconds} ${secondStr}`;
+    }
+    return `${minutes} ${minuteStr} and ${seconds} ${secondStr}`;
+  }
+
+  // src/utils/Stopwatch.ts
+  var Stopwatch = class {
+    // <-- Define an event callbacks object
+    constructor(startTime, timeElement) {
+      this.startTime = startTime;
+      this.timeElement = timeElement;
+      this.timeElapsed = this.startTime;
+      this.timeElement.textContent = formatTime(this.timeElapsed);
+    }
+    countup = 0;
+    // holds the setInterval
+    timeElapsed;
+    // holds the current elapsed time
+    eventCallbacks = {};
+    on(eventName, callback) {
+      if (!this.eventCallbacks[eventName]) {
+        this.eventCallbacks[eventName] = [];
+      }
+      this.eventCallbacks[eventName].push(callback);
+    }
+    emit(eventName) {
+      if (this.eventCallbacks[eventName]) {
+        this.eventCallbacks[eventName].forEach((callback) => callback());
+      }
+    }
+    start() {
+      this.countup = setInterval(() => {
+        this.timeElapsed += 1;
+        this.timeElement.textContent = formatTime(this.timeElapsed);
+      }, 1e3);
+    }
+    stop() {
+      clearInterval(this.countup);
+    }
+    reset() {
+      this.stop();
+      this.timeElapsed = this.startTime;
+      this.timeElement.textContent = formatTime(this.timeElapsed);
+    }
+    getTime() {
+      return this.timeElapsed;
+    }
+  };
 
   // src/utils/Level.ts
   var Level = class {
@@ -47,10 +108,9 @@
     userSelectEl;
     levelNumber;
     messageEl;
-    timer;
     score;
     isCircular;
-    constructor(levelNumber, targetValue, userSelection, displayUserSelectionElement, referenceEl, targetElProperty, targetEl, userSelectEl, messageEl2, timer2, score2, isCircular = false) {
+    constructor(levelNumber, targetValue, userSelection, displayUserSelectionElement, referenceEl, targetElProperty, targetEl, userSelectEl, messageEl2, score2, isCircular = false) {
       this.levelNumber = levelNumber;
       this.targetValue = targetValue;
       this.userSelection = userSelection;
@@ -60,9 +120,9 @@
       this.targetEl = targetEl;
       this.userSelectEl = userSelectEl;
       this.messageEl = messageEl2;
-      this.timer = timer2;
       this.score = score2;
       this.isCircular = isCircular;
+      this.updateGameUI();
     }
     play() {
       this.referenceEl.style.setProperty(
@@ -82,13 +142,21 @@
       );
     }
     checkAnswer() {
-      const points = this.score.updateScore(
-        this.targetValue,
-        this.userSelection,
-        this.levelNumber === 7
-      );
-      this.messageEl.textContent = `user selected: ${this.userSelection} and target is: ${this.targetValue}! +${points} points`;
-      return this.targetValue === this.userSelection;
+      let difference;
+      let percentageDifference;
+      if (this.isCircular) {
+        difference = Math.abs(this.targetValue - this.userSelection);
+        difference = Math.min(difference, 360 - difference);
+        percentageDifference = difference / 360 * 100;
+      } else {
+        difference = Math.abs(this.targetValue - this.userSelection);
+        percentageDifference = difference / this.targetValue * 100;
+      }
+      console.log({ percentageDifference });
+      if (percentageDifference <= PERFECT_PERCENT) {
+        return true;
+      }
+      return false;
     }
     formatPropertyValueToStringForLevel(level, value) {
       if (level === 1) {
@@ -172,55 +240,6 @@
     }
   };
 
-  // src/utils/Timer.ts
-  var Timer = class {
-    // <-- Define an event callbacks object
-    constructor(timeLimit, timeElement) {
-      this.timeLimit = timeLimit;
-      this.timeElement = timeElement;
-      this.timeRemaining = this.timeLimit;
-      this.timeElement.textContent = formatTime(this.timeRemaining);
-    }
-    countdown = 0;
-    // holds the setInterval
-    timeRemaining;
-    // holds the current remaining time
-    eventCallbacks = {};
-    on(eventName, callback) {
-      if (!this.eventCallbacks[eventName]) {
-        this.eventCallbacks[eventName] = [];
-      }
-      this.eventCallbacks[eventName].push(callback);
-    }
-    emit(eventName) {
-      if (this.eventCallbacks[eventName]) {
-        this.eventCallbacks[eventName].forEach((callback) => callback());
-      }
-    }
-    start() {
-      this.countdown = setInterval(() => {
-        this.timeRemaining -= 1;
-        if (this.timeRemaining < 0) {
-          this.stop();
-          this.emit("timeUp");
-        } else {
-          this.timeElement.textContent = formatTime(this.timeRemaining);
-        }
-      }, 1e3);
-    }
-    stop() {
-      clearInterval(this.countdown);
-    }
-    reset() {
-      this.stop();
-      this.timeRemaining = this.timeLimit;
-      this.timeElement.textContent = formatTime(this.timeRemaining);
-    }
-    getTime() {
-      return this.timeRemaining;
-    }
-  };
-
   // src/index.ts
   var referenceEls = document.querySelectorAll('[data-game="reference-el"]' /* REFERENCE_ELEMENTS */);
   var targetEls = document.querySelectorAll('[data-game="target-el"]' /* TARGET_ELEMENTS */);
@@ -240,15 +259,17 @@
   var endEl = document.querySelector('[data-game="end"]' /* END_ELEMENT */);
   var endTextEl = document.querySelector('[data-game="end-text"]' /* END_TEXT_ELEMENT */);
   var tryAgainButton = document.querySelector('[data-game="try-again"]' /* TRY_AGAIN_BUTTON */);
+  var glowTopEmbed = document.querySelector('[data-game="glow-top-embed"]' /* GLOW_TOP_EMBED */);
+  var penaltyOverlay = document.querySelector('[data-game="penalty-overlay"]' /* PENALTY_OVERLAY */);
+  var gameWindow = document.querySelector('[data-game="game-window"]' /* GAME_WINDOW */);
   var currentLevel = 1;
   var levels = [];
   var numLevels = Object.keys(LEVEL_PROPERTIES_NAMES).length;
-  if (!scoreEl || !roundEl || !messageEl || !timerEl || !countdownEl || !introEl || !gameEl || !endEl || !endTextEl || !tryAgainButton || !startGameButton) {
+  if (!scoreEl || !roundEl || !messageEl || !timerEl || !countdownEl || !introEl || !gameEl || !endEl || !endTextEl || !tryAgainButton || !startGameButton || !glowTopEmbed || !penaltyOverlay || !gameWindow) {
     throw new Error("Error retrieving necessary game elements.");
   }
   var score = new Score(scoreEl);
-  var timer = new Timer(TIME, timerEl);
-  timer.on("timeUp", gameOver);
+  var stopwatch = new Stopwatch(0, timerEl);
   roundEl.textContent = currentLevel.toString().padStart(2, "0");
   hideNextShowSubmit();
   for (let i = 1; i <= numLevels; i++) {
@@ -271,7 +292,6 @@
       targetEls[i - 1],
       userSelectEls[i - 1],
       messageEl,
-      timer,
       score,
       i === 7 ? true : false
       // level 7 score is based ond degrees
@@ -292,7 +312,7 @@
       if (currentCountdown === 1) {
         clearInterval(countdown);
         simulateClick(tabLinks[currentLevel]);
-        timer.start();
+        stopwatch.start();
         levels[currentLevel - 1].play();
       } else {
         countdownEl.textContent = (currentCountdown - 1).toString();
@@ -300,30 +320,55 @@
     }, 1e3);
   }
   function resetGame() {
-    if (!roundEl || !countdownEl || !score || !timer) {
+    if (!roundEl || !countdownEl || !score || !stopwatch) {
       throw new Error("Error resetting the game");
     }
     countdownEl.textContent = "3";
     score.reset();
-    timer.reset();
+    stopwatch.reset();
     currentLevel = 1;
     simulateClick(tabLinks[0]);
     roundEl.textContent = currentLevel.toString().padStart(2, "0");
   }
   function gameOver() {
-    timer.stop();
+    stopwatch.stop();
     if (!gameEl || !endEl || !endTextEl) {
       throw new Error("Game and end elements are required");
     }
-    const timeRemaining = timer.getTime();
-    const finalScore = score.getScore();
-    if (timeRemaining > 0) {
-      endTextEl.textContent = `Congratulations! You scored ${finalScore} ${finalScore === 1 ? "point" : "points"}, with ${timeRemaining} ${timeRemaining === 1 ? "second" : "seconds"} remaining.`;
-    } else {
-      endTextEl.textContent = `Oh No! You ran out of time. You scored ${finalScore} ${finalScore === 1 ? "point" : "points"}.`;
-    }
+    const timeDisplay = formatHumanReadableTime(stopwatch.getTime());
+    endTextEl.textContent = `Congratulations! You finished the game in ${timeDisplay}.`;
     gameEl.style.setProperty("display", "none");
     endEl.style.setProperty("display", "block");
+  }
+  function handleAnswer(isCorrect) {
+    if (!messageEl || !glowTopEmbed || !penaltyOverlay || !gameWindow)
+      return;
+    if (isCorrect) {
+      glowTopEmbed.classList.add(CLASSNAMES.SUCCESS);
+      messageEl.classList.add(CLASSNAMES.SUCCESS);
+      messageEl.textContent = "Congratulations! You nailed it";
+      hideSubmitShowNext();
+    } else {
+      let penaltyTime = (PENALTY_DURATION - 1) / 1e3;
+      messageEl.textContent = `Incorrect! Try again in ${Math.round(penaltyTime)} ${penaltyTime === 1 ? "second" : "seconds"}.`;
+      penaltyOverlay.classList.add(CLASSNAMES.ACTIVE);
+      glowTopEmbed.classList.add(CLASSNAMES.ERROR);
+      messageEl.classList.add(CLASSNAMES.ERROR);
+      gameWindow.classList.add(CLASSNAMES.SHAKE);
+      setTimeout(() => {
+        gameWindow.classList.remove(CLASSNAMES.SHAKE);
+      }, SHAKE_DURATION);
+      const penaltyInterval = setInterval(() => {
+        messageEl.textContent = `Incorrect! Try again in ${Math.round(penaltyTime)} ${penaltyTime === 1 ? "second" : "seconds"}.`;
+        penaltyTime -= 1;
+      }, 1e3);
+      setTimeout(() => {
+        clearInterval(penaltyInterval);
+        penaltyOverlay.classList.remove(CLASSNAMES.ACTIVE);
+        glowTopEmbed.classList.remove(CLASSNAMES.ERROR);
+        messageEl.classList.remove(CLASSNAMES.ERROR);
+      }, PENALTY_DURATION);
+    }
   }
   startGameButton.addEventListener("click", () => {
     handleStartGameButtonClicked();
@@ -340,14 +385,20 @@
     introEl.style.setProperty("display", "block");
   });
   function handleSubmitButtonClicked() {
-    levels[currentLevel - 1].checkAnswer();
-    hideSubmitShowNext();
+    if (!messageEl || !glowTopEmbed)
+      return;
+    const isCorrect = levels[currentLevel - 1].checkAnswer();
+    handleAnswer(isCorrect);
   }
   function handleNextRoundButtonClicked() {
     if (!roundEl) {
       throw new Error("Round element is required");
     }
+    if (!glowTopEmbed || !messageEl)
+      return;
     currentLevel += 1;
+    glowTopEmbed.classList.remove(CLASSNAMES.SUCCESS);
+    messageEl.classList.remove(CLASSNAMES.SUCCESS);
     if (currentLevel <= levels.length) {
       roundEl.textContent = currentLevel.toString().padStart(2, "0");
       simulateClick(tabLinks[currentLevel]);
@@ -359,18 +410,18 @@
   }
   function hideSubmitShowNext() {
     submitButtons.forEach((button) => {
-      button.style.setProperty("visibility", "hidden");
+      button.style.setProperty("display", "none");
     });
     nextRoundButtons.forEach((button) => {
-      button.style.setProperty("visibility", "visible");
+      button.style.setProperty("display", "block");
     });
   }
   function hideNextShowSubmit() {
     submitButtons.forEach((button) => {
-      button.style.setProperty("visibility", "visible");
+      button.style.setProperty("display", "block");
     });
     nextRoundButtons.forEach((button) => {
-      button.style.setProperty("visibility", "hidden");
+      button.style.setProperty("display", "none");
     });
   }
   function getRandomInt(min, max) {

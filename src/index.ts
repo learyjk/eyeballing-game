@@ -1,8 +1,14 @@
-import { LEVEL_PROPERTIES_NAMES, TIME } from '$utils/constants';
+import {
+  CLASSNAMES,
+  LEVEL_PROPERTIES_NAMES,
+  PENALTY_DURATION,
+  SHAKE_DURATION,
+} from '$utils/constants';
+import { formatHumanReadableTime } from '$utils/helpers';
+import { Stopwatch } from '$utils/Stopwatch';
 
 import { Level } from './utils/Level';
 import { Score } from './utils/Score';
-import { Timer } from './utils/Timer';
 
 enum SELECTORS {
   REFERENCE_ELEMENTS = '[data-game="reference-el"]', // element displaying target value
@@ -23,6 +29,9 @@ enum SELECTORS {
   END_ELEMENT = '[data-game="end"]',
   END_TEXT_ELEMENT = '[data-game="end-text"]',
   TRY_AGAIN_BUTTON = '[data-game="try-again"]',
+  GLOW_TOP_EMBED = '[data-game="glow-top-embed"]',
+  PENALTY_OVERLAY = '[data-game="penalty-overlay"]',
+  GAME_WINDOW = '[data-game="game-window"]',
 }
 
 // GET ELEMENTS
@@ -44,6 +53,9 @@ const gameEl = document.querySelector<HTMLDivElement>(SELECTORS.GAME_ELEMENT);
 const endEl = document.querySelector<HTMLDivElement>(SELECTORS.END_ELEMENT);
 const endTextEl = document.querySelector<HTMLDivElement>(SELECTORS.END_TEXT_ELEMENT);
 const tryAgainButton = document.querySelector<HTMLAnchorElement>(SELECTORS.TRY_AGAIN_BUTTON);
+const glowTopEmbed = document.querySelector<HTMLDivElement>(SELECTORS.GLOW_TOP_EMBED);
+const penaltyOverlay = document.querySelector<HTMLDivElement>(SELECTORS.PENALTY_OVERLAY);
+const gameWindow = document.querySelector<HTMLDivElement>(SELECTORS.GAME_WINDOW);
 
 // LOG THEM JUST FOR DEBUGGING
 // console.log({
@@ -79,13 +91,15 @@ if (
   !endEl ||
   !endTextEl ||
   !tryAgainButton ||
-  !startGameButton
+  !startGameButton ||
+  !glowTopEmbed ||
+  !penaltyOverlay ||
+  !gameWindow
 ) {
   throw new Error('Error retrieving necessary game elements.');
 }
 const score = new Score(scoreEl);
-const timer = new Timer(TIME, timerEl);
-timer.on('timeUp', gameOver);
+const stopwatch = new Stopwatch(0, timerEl);
 roundEl.textContent = currentLevel.toString().padStart(2, '0');
 hideNextShowSubmit();
 
@@ -104,7 +118,6 @@ for (let i = 1; i <= numLevels; i++) {
     targetEls[i - 1],
     userSelectEls[i - 1],
     messageEl,
-    timer,
     score,
     i === 7 ? true : false // level 7 score is based ond degrees
   );
@@ -127,7 +140,7 @@ function handleStartGameButtonClicked() {
       clearInterval(countdown);
       simulateClick(tabLinks[currentLevel]);
       // start playing first level
-      timer.start();
+      stopwatch.start();
       levels[currentLevel - 1].play();
     } else {
       countdownEl.textContent = (currentCountdown - 1).toString();
@@ -136,39 +149,69 @@ function handleStartGameButtonClicked() {
 }
 
 function resetGame() {
-  if (!roundEl || !countdownEl || !score || !timer) {
+  if (!roundEl || !countdownEl || !score || !stopwatch) {
     throw new Error('Error resetting the game');
   }
   countdownEl.textContent = '3';
   score.reset();
-  timer.reset();
+  stopwatch.reset();
   currentLevel = 1;
   simulateClick(tabLinks[0]);
   roundEl.textContent = currentLevel.toString().padStart(2, '0');
 }
 
 function gameOver() {
-  timer.stop();
+  stopwatch.stop();
   if (!gameEl || !endEl || !endTextEl) {
     throw new Error('Game and end elements are required');
   }
-  const timeRemaining = timer.getTime();
-  const finalScore = score.getScore();
-  if (timeRemaining > 0) {
-    // finished before time ran out
-    // score.addScore(timeRemaining); // interesting
+  const timeDisplay = formatHumanReadableTime(stopwatch.getTime());
+  //const finalScore = score.getScore();
 
-    endTextEl.textContent = `Congratulations! You scored ${finalScore} ${
-      finalScore === 1 ? 'point' : 'points'
-    }, with ${timeRemaining} ${timeRemaining === 1 ? 'second' : 'seconds'} remaining.`;
-  } else {
-    // time ran out
-    endTextEl.textContent = `Oh No! You ran out of time. You scored ${finalScore} ${
-      finalScore === 1 ? 'point' : 'points'
-    }.`;
-  }
+  endTextEl.textContent = `Congratulations! You finished the game in ${timeDisplay}.`;
+
   gameEl.style.setProperty('display', 'none');
   endEl.style.setProperty('display', 'block');
+}
+
+function handleAnswer(isCorrect: boolean) {
+  if (!messageEl || !glowTopEmbed || !penaltyOverlay || !gameWindow) return;
+  if (isCorrect) {
+    glowTopEmbed.classList.add(CLASSNAMES.SUCCESS);
+    messageEl.classList.add(CLASSNAMES.SUCCESS);
+    messageEl.textContent = 'Congratulations! You nailed it';
+    hideSubmitShowNext();
+  } else {
+    // time penalty
+    let penaltyTime = (PENALTY_DURATION - 1) / 1000;
+    messageEl.textContent = `Incorrect! Try again in ${Math.round(penaltyTime)} ${
+      penaltyTime === 1 ? 'second' : 'seconds'
+    }.`;
+
+    penaltyOverlay.classList.add(CLASSNAMES.ACTIVE);
+    glowTopEmbed.classList.add(CLASSNAMES.ERROR);
+    messageEl.classList.add(CLASSNAMES.ERROR);
+    gameWindow.classList.add(CLASSNAMES.SHAKE);
+
+    setTimeout(() => {
+      gameWindow.classList.remove(CLASSNAMES.SHAKE);
+    }, SHAKE_DURATION);
+
+    // This interval will run every second to update the messageEl text content
+    const penaltyInterval = setInterval(() => {
+      messageEl.textContent = `Incorrect! Try again in ${Math.round(penaltyTime)} ${
+        penaltyTime === 1 ? 'second' : 'seconds'
+      }.`;
+      penaltyTime -= 1;
+    }, 1000);
+
+    setTimeout(() => {
+      clearInterval(penaltyInterval); // Clear the interval after PENALTY_DURATION
+      penaltyOverlay.classList.remove(CLASSNAMES.ACTIVE);
+      glowTopEmbed.classList.remove(CLASSNAMES.ERROR);
+      messageEl.classList.remove(CLASSNAMES.ERROR);
+    }, PENALTY_DURATION);
+  }
 }
 
 // EVENT LISTENERS
@@ -192,15 +235,22 @@ tryAgainButton.addEventListener('click', () => {
 
 // HANDLERS
 function handleSubmitButtonClicked() {
-  levels[currentLevel - 1].checkAnswer();
-  hideSubmitShowNext();
+  if (!messageEl || !glowTopEmbed) return;
+  const isCorrect = levels[currentLevel - 1].checkAnswer();
+  handleAnswer(isCorrect);
 }
 
 function handleNextRoundButtonClicked() {
   if (!roundEl) {
     throw new Error('Round element is required');
   }
+  if (!glowTopEmbed || !messageEl) return;
   currentLevel += 1;
+
+  // ui updates
+  glowTopEmbed.classList.remove(CLASSNAMES.SUCCESS);
+  messageEl.classList.remove(CLASSNAMES.SUCCESS);
+
   if (currentLevel <= levels.length) {
     roundEl.textContent = currentLevel.toString().padStart(2, '0');
     simulateClick(tabLinks[currentLevel]);
@@ -215,19 +265,19 @@ function handleNextRoundButtonClicked() {
 // HELPERS
 function hideSubmitShowNext() {
   submitButtons.forEach((button) => {
-    button.style.setProperty('visibility', 'hidden');
+    button.style.setProperty('display', 'none');
   });
   nextRoundButtons.forEach((button) => {
-    button.style.setProperty('visibility', 'visible');
+    button.style.setProperty('display', 'block');
   });
 }
 
 function hideNextShowSubmit() {
   submitButtons.forEach((button) => {
-    button.style.setProperty('visibility', 'visible');
+    button.style.setProperty('display', 'block');
   });
   nextRoundButtons.forEach((button) => {
-    button.style.setProperty('visibility', 'hidden');
+    button.style.setProperty('display', 'none');
   });
 }
 

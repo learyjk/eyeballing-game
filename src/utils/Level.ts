@@ -1,6 +1,6 @@
+import { PERFECT_PERCENT } from './constants';
 import { convertDegreeToBoxShadowOffset } from './helpers';
 import { Score } from './Score';
-import { Timer } from './Timer';
 
 export class Level {
   targetValue: number;
@@ -12,7 +12,6 @@ export class Level {
   userSelectEl: HTMLInputElement;
   levelNumber: number;
   messageEl: HTMLDivElement;
-  timer: Timer;
   score: Score;
   isCircular: boolean;
 
@@ -26,7 +25,6 @@ export class Level {
     targetEl: HTMLElement,
     userSelectEl: HTMLInputElement,
     messageEl: HTMLDivElement,
-    timer: Timer,
     score: Score,
     isCircular = false
   ) {
@@ -39,9 +37,10 @@ export class Level {
     this.targetEl = targetEl;
     this.userSelectEl = userSelectEl;
     this.messageEl = messageEl;
-    this.timer = timer;
     this.score = score;
     this.isCircular = isCircular;
+
+    this.updateGameUI();
   }
 
   play(): void {
@@ -74,15 +73,37 @@ export class Level {
   }
 
   checkAnswer(): boolean {
-    const points = this.score.updateScore(
-      this.targetValue,
-      this.userSelection,
-      this.levelNumber === 7
-    );
+    // const points = this.score.updateScore(
+    //   this.targetValue,
+    //   this.userSelection,
+    //   this.levelNumber === 7
+    // );
 
-    //console.log(`user selected: ${this.userSelection} and target is: ${this.targetValue}`);
-    this.messageEl.textContent = `user selected: ${this.userSelection} and target is: ${this.targetValue}! +${points} points`;
-    return this.targetValue === this.userSelection;
+    let difference;
+    let percentageDifference;
+
+    if (this.isCircular) {
+      difference = Math.abs(this.targetValue - this.userSelection);
+      // Adjust difference for angle wrap-around
+      difference = Math.min(difference, 360 - difference);
+
+      // calculate percentage
+      percentageDifference = (difference / 360) * 100;
+    } else {
+      difference = Math.abs(this.targetValue - this.userSelection);
+      percentageDifference = (difference / this.targetValue) * 100;
+    }
+
+    console.log({ percentageDifference });
+
+    if (percentageDifference <= PERFECT_PERCENT) {
+      return true;
+    }
+
+    return false;
+
+    // this.messageEl.textContent = `user selected: ${this.userSelection} and target is: ${this.targetValue}! +${points} points`;
+    // return this.targetValue === this.userSelection;
   }
 
   formatPropertyValueToStringForLevel(level: number, value: number): string {

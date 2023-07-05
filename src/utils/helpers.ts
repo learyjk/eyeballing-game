@@ -20,3 +20,16 @@ export function formatTime(time: number): string {
   const seconds = time % 60;
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`; // format time to MM:SS
 }
+
+export function formatHumanReadableTime(time: number): string {
+  const minutes = Math.floor(time / 60);
+  const seconds = time % 60;
+
+  const minuteStr = minutes === 1 ? 'minute' : 'minutes';
+  const secondStr = seconds === 1 ? 'second' : 'seconds';
+
+  if (minutes === 0) {
+    return `${seconds} ${secondStr}`;
+  }
+  return `${minutes} ${minuteStr} and ${seconds} ${secondStr}`;
+}
