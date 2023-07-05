@@ -86,7 +86,9 @@ export class Level {
       percentageDifference = (difference / 360) * 100;
     } else {
       difference = Math.abs(this.targetValue - this.userSelection);
-      percentageDifference = (difference / this.targetValue) * 100;
+      // calculate percentage difference based on the range
+      const range = this.max - this.min;
+      percentageDifference = (difference / range) * 100;
     }
 
     console.log(`target: ${this.targetValue} user: ${this.userSelection}`);
