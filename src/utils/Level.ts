@@ -9,6 +9,8 @@ export class Level {
   referenceEl: HTMLElement;
   targetEl: HTMLElement;
   targetElProperty: string;
+  min: number;
+  max: number;
   userSelectEl: HTMLInputElement;
   levelNumber: number;
   messageEl: HTMLDivElement;
@@ -22,6 +24,8 @@ export class Level {
     displayUserSelectionElement: HTMLElement,
     referenceEl: HTMLElement,
     targetElProperty: string,
+    min: number,
+    max: number,
     targetEl: HTMLElement,
     userSelectEl: HTMLInputElement,
     messageEl: HTMLDivElement,
@@ -34,6 +38,8 @@ export class Level {
     this.displayUserSelectionElement = displayUserSelectionElement;
     this.referenceEl = referenceEl;
     this.targetElProperty = targetElProperty;
+    this.min = min;
+    this.max = max;
     this.targetEl = targetEl;
     this.userSelectEl = userSelectEl;
     this.messageEl = messageEl;
@@ -91,9 +97,6 @@ export class Level {
     }
 
     return false;
-
-    // this.messageEl.textContent = `user selected: ${this.userSelection} and target is: ${this.targetValue}! +${points} points`;
-    // return this.targetValue === this.userSelection;
   }
 
   formatPropertyValueToStringForLevel(level: number, value: number): string {

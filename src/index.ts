@@ -1,9 +1,4 @@
-import {
-  CLASSNAMES,
-  LEVEL_PROPERTIES_NAMES,
-  PENALTY_DURATION,
-  SHAKE_DURATION,
-} from '$utils/constants';
+import { CLASSNAMES, LEVEL_PROPERTIES, PENALTY_DURATION, SHAKE_DURATION } from '$utils/constants';
 import { formatHumanReadableTime } from '$utils/helpers';
 import { Stopwatch } from '$utils/Stopwatch';
 
@@ -79,7 +74,7 @@ let currentLevel = 1;
 // CREATE LEVELS
 const levels: Level[] = [];
 
-const numLevels = Object.keys(LEVEL_PROPERTIES_NAMES).length;
+const numLevels = Object.keys(LEVEL_PROPERTIES).length;
 if (
   !scoreEl ||
   !roundEl ||
@@ -114,7 +109,9 @@ for (let i = 1; i <= numLevels; i++) {
     parseInt(userSelectEls[i - 1].value, 10), // user selection
     displaySelectEls[i - 1], // element displaying user selection
     referenceEls[i - 1], // reference element
-    LEVEL_PROPERTIES_NAMES[i], // target element property
+    LEVEL_PROPERTIES[i].cssProperty, // target element property
+    LEVEL_PROPERTIES[i].min, // target element unit
+    LEVEL_PROPERTIES[i].max, // target element unit
     targetEls[i - 1],
     userSelectEls[i - 1],
     messageEl,
