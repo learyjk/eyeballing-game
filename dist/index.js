@@ -30,6 +30,11 @@
     const offsetY = Math.floor(distance * Math.sin(angleInRadians));
     return { offsetX, offsetY };
   }
+  function formatTime(time) {
+    const minutes = Math.floor(time / 60);
+    const seconds = time % 60;
+    return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  }
 
   // src/utils/Level.ts
   var Level = class {
@@ -174,7 +179,7 @@
       this.timeLimit = timeLimit;
       this.timeElement = timeElement;
       this.timeRemaining = this.timeLimit;
-      this.timeElement.textContent = this.formatTime(this.timeRemaining);
+      this.timeElement.textContent = formatTime(this.timeRemaining);
     }
     countdown = 0;
     // holds the setInterval
@@ -199,7 +204,7 @@
           this.stop();
           this.emit("timeUp");
         } else {
-          this.timeElement.textContent = this.formatTime(this.timeRemaining);
+          this.timeElement.textContent = formatTime(this.timeRemaining);
         }
       }, 1e3);
     }
@@ -209,15 +214,10 @@
     reset() {
       this.stop();
       this.timeRemaining = this.timeLimit;
-      this.timeElement.textContent = this.formatTime(this.timeRemaining);
+      this.timeElement.textContent = formatTime(this.timeRemaining);
     }
     getTime() {
       return this.timeRemaining;
-    }
-    formatTime(time) {
-      const minutes = Math.floor(time / 60);
-      const seconds = time % 60;
-      return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
     }
   };
 
